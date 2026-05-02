@@ -1,0 +1,88 @@
+# see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning.
+
+name: "CodeQL SAST"
+
+on:
+  push:
+    branches: [ "hardened", "main" ]
+  pull_request:
+    branches: [ "hardened" ]
+  schedule:
+    - cron: '00 06 * * 3'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # Runner size impacts CodeQL analysis time. To learn more, please see:
+    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
+    #   - https://gh.io/supported-runners-and-hardware-resources
+    #   - https://gh.io/using-larger-runners (GitHub.com only)
+    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
+    runs-on: ubuntu-latest
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # required to fetch internal or private CodeQL packs
+      packages: read
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: c-cpp
+
+    steps:
+    # Checkout the respository to be analyzed into the Actions runner.
+    # The CodeQL Action will automatically add the "codeql" user as a collaborator with read access to the repository when it runs.
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Install dependencies required to build the code: required by the libraries in the "common/lib*/"directories
+    - name: Install dependencies for build
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libssl-dev \
+          libavcodec-dev \
+          libavformat-dev \
+          libfaad-dev
+
+    # Add any setup steps before running the `github/codeql-action/init` action.
+    # This includes steps like installing compilers or runtimes (`actions/setup-node`
+    # or others). This is typically only required for manual builds.
+    # - name: Setup runtime (example)
+    #   uses: actions/setup-example@v1
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
+        queries: "security-extended, security-and-quality"
+        # Add excluded paths (optional)
+        # config: |
+        #     paths-ignore:
+        #       - '**/test/**'
+        #       - '**/contrib/**'
+        #       - 'lib/ixml/**'
+    
+      # Build for analysis of compiled languages: see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+    - name: Build
+      run: |
+        make
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{matrix.language}}"
+        # Upload results to GitHub Code Scanning (instead of only seeing the results in the Actions logs)
+        upload: true
