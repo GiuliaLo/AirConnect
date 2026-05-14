@@ -1,6 +1,8 @@
+#!/bin/bash
+
 # script to sync changes from the upstream project to this fork (using "master" to track the changes)
 # and rebase the "hardened" (default) branch on top of the imported changes
-#!/bin/bash
+
 set -e  # stop on first error
 
 echo "Fetching upstream..."
