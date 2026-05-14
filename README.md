@@ -23,7 +23,7 @@ The default branch is `hardened`. The `master` branch mirrors the original upstr
 1. Clone the repository and initialize submodules:
 
 ```bash
-git clone https://github.com/philippe44/AirConnect.git
+git clone https://github.com/GiuliaLo/AirConnect.git
 cd AirConnect
 git submodule update --init --recursive
 ```
