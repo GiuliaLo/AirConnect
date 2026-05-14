@@ -116,3 +116,6 @@ air*/bin
 *.bat
 bin/
 !AirConnect*.zip
+
+# VS Code
+.vscode/
