@@ -29,6 +29,7 @@ jobs:
     with:
       scan-args: |-
         -r
+        --submodules
         ./
   
   scan-pr:
@@ -38,4 +39,5 @@ jobs:
     with:
       scan-args: |-
         -r
+        --submodules
         ./
