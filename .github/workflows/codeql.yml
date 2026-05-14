@@ -4,29 +4,22 @@ name: "CodeQL SAST"
 
 on:
   push:
-    branches: [ "hardened", "main" ]
+    branches: [ "hardened" ]
   pull_request:
     branches: [ "hardened" ]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
   schedule:
-    - cron: '00 06 * * 3'
+    - cron: '0 6 * * 3'
+  workflow_dispatch: {} # Allows manual triggering of the workflow from the GitHub Actions tab in the repository.
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
-    # Runner size impacts CodeQL analysis time. To learn more, please see:
-    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
-    #   - https://gh.io/supported-runners-and-hardware-resources
-    #   - https://gh.io/using-larger-runners (GitHub.com only)
-    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
+    name: Analyze C/C++
     runs-on: ubuntu-latest
     permissions:
-      # required for all workflows
       security-events: write
-
-      # required to fetch internal or private CodeQL packs
-      packages: read
-
-      # only required for workflows in private repositories
       actions: read
       contents: read
 
@@ -41,48 +34,47 @@ jobs:
     # The CodeQL Action will automatically add the "codeql" user as a collaborator with read access to the repository when it runs.
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    # Install dependencies required to build the code: required by the libraries in the "common/lib*/"directories
-    - name: Install dependencies for build
+      with:
+        submodules: "recursive" # to ensure that the "common/lib*/" directories are included in the checkout, as they are required for the build and analysis steps.
+    
+    # This step is required for compiled languages. Prerequisite for the Build step.
+    # For more details, see: https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#installing-build-dependencies
+    - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          libssl-dev \
-          libavcodec-dev \
-          libavformat-dev \
-          libfaad-dev
+        sudo apt-get install -y gcc make
 
-    # Add any setup steps before running the `github/codeql-action/init` action.
-    # This includes steps like installing compilers or runtimes (`actions/setup-node`
-    # or others). This is typically only required for manual builds.
-    # - name: Setup runtime (example)
-    #   uses: actions/setup-example@v1
-
-    # Initializes the CodeQL tools for scanning.
+    # Initialize CodeQL: define the languages to be analyzed and specify any additional queries or packs to be used.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
-        # If you wish to specify custom queries, you can do so here or in a config file.
-        # By default, queries listed here will override any specified in a config file.
-        # Prefix the list here with "+" to use these queries and those in the config file.
-        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
-        queries: "security-extended, security-and-quality"
+        queries: security-and-quality # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # Add excluded paths (optional)
         # config: |
         #     paths-ignore:
         #       - '**/test/**'
-        #       - '**/contrib/**'
-        #       - 'lib/ixml/**'
-    
-      # Build for analysis of compiled languages: see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+
+    # Build project for CodeQL analysis of compiled languages
+    # See https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
     - name: Build
       run: |
-        make
+        make -C aircast CC=gcc HOST=linux PLATFORM=x86_64 -j$(nproc)
+        make -C airupnp CC=gcc HOST=linux PLATFORM=x86_64 -j$(nproc)
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
-        # Upload results to GitHub Code Scanning (instead of only seeing the results in the Actions logs)
-        upload: true
+        upload: true  # Upload results to GitHub Code Scanning (instead of only seeing the results in the Actions logs)
+      id: analyze #
+
+    # Upload the SARIF file generated by the CodeQL analysis as an artifact that can be downloaded from the Actions tab in the repository.
+    # This is useful for manual runs of the workflow, where results are not automatically uploaded to GitHub Code Scanning.
+    - name: Upload artifact of CodeQL results
+      if: success() || failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results
+        path: ${{ steps.analyze.outputs.sarif-output }}
+        retention-days: 5
