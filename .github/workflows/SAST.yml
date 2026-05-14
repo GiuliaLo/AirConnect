@@ -35,7 +35,7 @@ jobs:
     # Checkout the respository to be analyzed into the Actions runner.
     # The CodeQL Action will automatically add the "codeql" user as a collaborator with read access to the repository when it runs.
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: "recursive" # to ensure that the "common/lib*/" directories are included in the checkout, as they are required for the build and analysis steps.
     
@@ -74,7 +74,7 @@ jobs:
     # This is useful for manual runs of the workflow, where results are not automatically uploaded to GitHub Code Scanning.
     - name: Upload artifact of CodeQL results
       if: success() || failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: codeql-results
         path: ${{ steps.analyze.outputs.sarif-output }}
@@ -90,9 +90,9 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@2.0.0
         id: shellcheck
         continue-on-error: true     # Keep job alive so upload step runs (otherwise it fails the step and pipeline if there are findings)
