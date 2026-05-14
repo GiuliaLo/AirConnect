@@ -95,14 +95,4 @@ jobs:
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@master
         id: shellcheck
-        with:
-          format: sarif
         continue-on-error: true     # Keep job alive so upload step runs (otherwise it fails the step and pipeline if there are findings)
-
-      - name: Upload artifact of ShellCheck results
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: shellcheck-results
-          path: ${{ steps.shellcheck.outputs.sarif-output }}
-          retention-days: 5
