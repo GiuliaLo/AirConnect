@@ -7,7 +7,7 @@ It will detect Chromecast players (e.g. Google Home Speakers), create as many vi
 
 ## Attribution and repo structure
 
-This project is a fork from Philippe44/AirConnect, hardened by fixing vulnerablities detected with CodeQL and Dependabot, and minimized to focus on the iOS → Google Home use case, thus removing all unnecessary features and dependencies.
+This project is a fork from Philippe44/AirConnect, hardened with CodeQL and dependency scanning results, and minimized to focus on the iOS → Google Home use case, thus removing all unnecessary features and dependencies.
 For the full-featured functionality, including Sonos and UPnP compatibility and different platform build options, see the original repo (or the `master` branch of this one: see below). The original README file also includes a much more in-depth explanation of the inner workings of the software.
 
 The default branch is `hardened`. The `master` branch mirrors the original upstream repo, and is used to pull changes which are then imported into `hardened`. See `sync-upstream.sh`.
