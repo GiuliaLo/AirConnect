@@ -1,0 +1,207 @@
+#!/bin/bash
+#AirConnect Updater - Pull latest Update from https://github.com/GiuliaLo/AirConnect
+#AirConnect by philippe44 https://github.com/philippe44 - updater script based on contribution to philippe44/AirConnect by FaserF https://github.com/FaserF
+
+#Variables
+newversion=0000
+currentversion=0000
+state=NoLocalInstallationFound
+currentdirectory=$PWD
+tmpfolder=/tmp/AirConnect
+backupfolder=$tmpfolder/backup
+downloadfolder=$tmpfolder/download
+REPO_NAME="GiuliaLo/AirConnect"
+REPO_URL="https://github.com/$REPO_NAME.git"
+REPO_BRANCH="hardened"
+
+
+function checkLocalInstallation() {
+	if [ -f "CHANGELOG" ] && [ -d "aircast" ]
+	then
+		echo "Current installation detected"
+
+		#Remeber current install directory
+		currentdirectory=$PWD
+
+		#Set state
+		state=LocalInstallationFound
+	fi
+	if [ -f "$currentdirectory/AirConnect/CHANGELOG" ]
+	then
+		echo "Current installation detected in subfolder AirConnect"
+		
+		#Remeber current install directory
+		currentdirectory=$PWD/AirConnect
+		
+		#Set state
+		state=LocalInstallationFound
+	fi
+}
+
+
+function cleanInstall() {
+	echo "First installation..."
+
+	#Ask for target installation directory
+	read -p "Enter full path where to install: " targetdirectory
+
+	if test -z "targetdirectory"
+	then
+		# install to current path if nothing is entered
+		targetdirectory=$PWD
+	fi
+
+	if [ "targetdirectory" = "/" ]
+	then
+		echo "Error: Can't install at root"
+		exit 1
+	fi
+
+	#Create target directory
+	if [ ! -d "$targetdirectory" ]
+	then
+		mkdir "$targetdirectory"
+	fi
+
+	#Install newest version
+	echo "----"
+	echo "Installing newest version..."
+	echo "----"
+	git clone --depth=1 --branch $BRANCH $REPO_URL $targetdirectory 2>&1 >/dev/null 
+}
+
+
+function prepareTmpFolder() {
+	#Delete previous folder if still exist 
+	if [ -d "$tmpfolder" ]
+	then
+	  rm -rf $tmpfolder
+	fi
+
+	#Create new empty tmp folders
+	mkdir $tmpfolder
+	mkdir $tmpfolder/backup
+	mkdir $tmpfolder/download
+}
+
+
+function searchNewVersion() {
+	#Checking for new Updates
+	echo "----"
+	echo "Checking for new updates"
+	echo "----"
+	
+	#Download online changelog
+	download https://raw.githubusercontent.com/$REPO_NAME/$REPO_BRANCH/CHANGELOG $tmpfolder/CHANGELOG
+
+	#Calculate online version
+	newversion=$(head -n 1 $tmpfolder/CHANGELOG)
+	newversion=${newversion//[-._]}
+
+	#Delete online changelog
+	rm $tmpfolder/CHANGELOG
+	
+	#Grep current version number
+	currentversion=$(head -n 1 $currentdirectory/CHANGELOG)
+	currentversion=${currentversion//[-._]}
+
+	if [ "$newversion" -gt "$currentversion" ]
+	then
+	    echo "Found new version: $newversion"
+		state=NewVersionFoundOnGithub
+	else
+	    echo "No new update found"
+	fi
+}
+
+
+function backupCurrentVersion() {
+	echo "----"
+	echo "Backing up old version..."
+	mv $currentdirectory/* $tmpfolder/backup
+}
+
+
+function updateCurrentVersion() {
+	#Remove previous version files
+	rm -rf $currentdirectory/*
+
+	#Download newest Version
+	echo "----"
+	echo "Update version..."
+	echo "----"
+	git clone --depth=1 --branch "$BRANCH" "$REPO_URL" $downloadfolder 2>&1 >/dev/null
+
+	#Install
+	mv $downloadfolder/* $currentdirectory
+}
+
+
+function validateUpdatedVersion() {
+	versioncheck=$(head -n 1 $currentdirectory/CHANGELOG)
+	versioncheck=${versioncheck//[-._]}
+
+	if [ "$versioncheck" -eq "$newversion" ]
+	then
+	    echo "----"
+	    echo "Update done"
+	    echo "----"
+	    echo "New Version: $versioncheck"
+	else
+	    echo "----"
+	    echo "Update failed"
+	    echo "----"
+	    echo "Current Version: $currentversion"	
+	fi
+
+	echo "-----"
+	echo "Old version backup in: $backupfolder"
+}
+
+
+function download() {
+    url=$1
+    filename=$2
+
+    if [ -x "$(which wget)" ] ; then
+        wget -q $url -O $2
+    elif [ -x "$(which curl)" ]; then
+        curl -o $2 -sfL $url
+    else
+        echo "Could not find curl or wget, please install one." >&2
+    fi
+}
+
+
+#
+# Main
+#########################################
+#
+#
+
+#Check if AirConnect is already installed
+checkLocalInstallation
+
+if [ $state = "NoLocalInstallationFound" ]
+then
+	#Install new version
+	cleanInstall
+else
+	#Create needed folder
+	prepareTmpFolder
+	
+	#Check if a new version is available
+	searchNewVersion
+	
+	if [ $state = "NewVersionFoundOnGithub" ]
+	then
+		#Backup Current Installation
+		backupCurrentVersion
+		
+		#Update Current Installation
+		updateCurrentVersion
+		
+		#Validate Version
+		validateUpdatedVersion
+	fi
+fi
