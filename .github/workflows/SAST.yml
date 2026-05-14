@@ -17,7 +17,7 @@ on:
 jobs:
   # ── SAST: C/C++ via CodeQL
   analyze:
-    name: Analyze C/C++
+    name: CodeQL Analysis for C/C++ and GitHub Actions workflows
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -29,6 +29,7 @@ jobs:
       matrix:
         include:
         - language: c-cpp
+        - language: actions  # GitHub Actions workflows
 
     steps:
     # Checkout the respository to be analyzed into the Actions runner.
